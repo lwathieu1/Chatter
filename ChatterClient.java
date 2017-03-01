@@ -1,5 +1,5 @@
 package Chatter;
 
-public class ChatterClient {
+public class ChatterClient{
 
 }
