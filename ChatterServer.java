@@ -66,16 +66,22 @@ public class ChatterServer
 	 	}
 	}
 	
-	private void tellOne(String message, String name) throws Exception
+	private boolean tellOne(String message, String name) throws Exception
 	{
-		System.out.println("trying to tell "+ name);
+		boolean found = false;
+		System.out.println("trying to tell "+name);
 		Iterator <ServerListener> it = listOfListeners.iterator();
 	 	while( it.hasNext() )
 	 	{
 	 		ServerListener listener = it.next(); 
 	 		if (listener.nickName.equals(name))
+	 		{
 	 			listener.write(message);
+	 			found = true;
+	 		}
 	 	}
+	 	return found;
+	 	
 	}
 	
 	
@@ -97,8 +103,6 @@ public class ChatterServer
 			OutputStream out = clientSocket.getOutputStream();
 		    bout = new BufferedWriter( new OutputStreamWriter( out ) );
 			
-			//pout = new PrintWriter( clientSocket.getOutputStream(), true);
-			
 		}
 		
 		
@@ -119,7 +123,7 @@ public class ChatterServer
 	    public void run()
 	    {
 			try {
-				while(true)
+				while(!clientSocket.isClosed())
 				{
 					String inLine = readLine();
 					System.out.println("Got something from the user!");
@@ -142,18 +146,30 @@ public class ChatterServer
 						else if (arrOfWords[0].equals("/dm") && arrOfWords.length > 1)
 						{
 							String ya = "DM from "+nickName+ ": "+ inLine.split(" ", 2)[1].split(" ", 2)[1];
-							tellOne(ya, arrOfWords[1]);
+							if (!tellOne(ya, arrOfWords[1]))
+								tellOne("\""+ya+"\" was not found in the chat room!", nickName);
 						}
 						else if (arrOfWords[0].equals("/quit"))
 						{
 							tellOthers(nickName + " has left the chat room!");
-							//WHAT TO DO HERE?
+							clientSocket.close();
+							//break;
 						}
-						else tellOthers(nickName+": "+inLine);
-
-						
+						else 
+							tellOthers(nickName+": "+inLine);
 					}
 				}
+
+				
+				Iterator <ServerListener> it = listOfListeners.iterator();
+			 	while( it.hasNext() )
+			 	{
+			 		ServerListener listener = it.next(); 
+			 		if (listener.equals(this))
+			 		{
+			 			it.remove();
+			 		}
+			 	}
 			}
 			catch (Exception e) 
 				{e.printStackTrace();}

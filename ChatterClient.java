@@ -6,11 +6,10 @@ import java.util.*;
 
 public class ChatterClient
 {
-	ClientListener listener;
+	private ClientListener listener;
 	private Scanner scanner;
-	//String nickName;
-	
-	BufferedWriter bout;
+	private BufferedWriter bout;
+	Socket socket;
 
 	public static void main( String[] args )
 	{	
@@ -31,31 +30,31 @@ public class ChatterClient
 	{		
 		try
 		{
-	        Socket sock = new Socket(name, port);
+	        socket = new Socket(name, port);
 	         
-	        OutputStream out = sock.getOutputStream();
+	        OutputStream out = socket.getOutputStream();
 		    bout = new BufferedWriter( new OutputStreamWriter( out ) );
 		    
 	 		scanner = new Scanner(System.in);
 			System.out.println("Welcome! What is your nickname (no spaces)?");
 			String nickName = getUserInput();
-			//System.out.println("Hi "+ nickName +"! DIRECTIONS HERE");
 			write("/nick " + nickName);
 		     
-	        listener = new ClientListener(sock);
+	        listener = new ClientListener(socket);
 	        listener.start();
 	         
-	        while(true)
+	        while(!socket.isClosed())
 	        {
 	        	String userCommand = getUserInput();
 	        	write(userCommand);
 	        	if (userCommand.split(" ")[0].equals("/quit"))
 	        	{
-	        		System.out.println("quit somehow!");
-	        		//What to do to quit??
+	        		System.out.println("Thanks for using this!");
+	        		socket.close();
 	        	}
-	        			
 	        }
+	        System.out.println("Out of while loop!");
+	        System.exit(0);
 				
 	    }
 	    catch ( Exception e )
@@ -77,14 +76,12 @@ public class ChatterClient
 	
 	public class ClientListener extends Thread
 	{
-		//private Socket serverSocket;
-		BufferedReader bin;
+		private BufferedReader bin;
 		
 		
 		public ClientListener(Socket s) throws Exception
 		{
-			//serverSocket = s;
-			
+
 	        InputStream in = s.getInputStream();
 	        bin = new BufferedReader( new InputStreamReader(in) );
 		}
