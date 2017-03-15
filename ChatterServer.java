@@ -46,7 +46,7 @@ public class ChatterServer
 			// when client calls, establish output stream to client and send date
 	    	// does not return until client calls up
 	        Socket client = sock.accept(); // this blocks code until a client calls      
-	        System.out.println("DateServer: accepts client connection! ");
+	        System.out.println("Chatter Server: accepts client connection! ");
 	        ServerListener sListenerThread = new ServerListener(client);
 	        listOfListeners.add(sListenerThread);
 	        sListenerThread.start();
@@ -56,14 +56,15 @@ public class ChatterServer
 	
 	private
 	synchronized
-	void tellOthers(String message) throws Exception 
+	void tellOthers(ServerListener sender, String message) throws Exception 
 	{
 		System.out.println("trying to tell others!!");
 		Iterator <ServerListener> it = listOfListeners.iterator();
 	 	while( it.hasNext() )
 	 	{
 	 		ServerListener listener = it.next(); 
-	 		listener.write(message);
+	 		if (!listener.equals(sender))
+	 			listener.write(message);
 	 	}
 	}
 	
@@ -142,9 +143,9 @@ public class ChatterServer
 						String oldNickName = nickName;
 						nickName = arrOfWords[1];
 						if (oldNickName.equals("defaultName"))
-							tellOthers(nickName+" joined the Chat Room!");
+							tellOthers(this, nickName+" joined the Chat Room!");
 						else
-							tellOthers(oldNickName + " changed their name to " + nickName);
+							tellOthers(this, oldNickName + " changed their name to " + nickName);
 					}
 					else if (arrOfWords[0].equals("/dm") && arrOfWords.length > 1)
 					{
@@ -154,12 +155,12 @@ public class ChatterServer
 					}
 					else if (arrOfWords[0].equals("/quit"))
 					{
-						tellOthers(nickName + " has left the chat room!");
+						tellOthers(this, nickName + " has left the chat room!");
 						clientSocket.close();
 						//break;
 					}
 					else 
-						tellOthers(nickName+": "+inLine);
+						tellOthers(this, nickName+": "+inLine);
 				}
 			}
 
