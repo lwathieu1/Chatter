@@ -39,7 +39,11 @@ public class ChatterClient
 			System.out.println("Welcome! What is your nickname (no spaces)?");
 			String nickName = getUserInput();
 			write("/nick " + nickName);
-			System.out.println(nickName + " joined the Chat Room!");
+			System.out.println("Welcome to the chat room " + nickName + "!");
+			System.out.println("Commands:  /nick NAME (change nickname)");
+			System.out.println("           /dm NAME MSG (Send personal MSG to NAME)");
+			System.out.println("           /quit (Leave the chat room)");
+			
 		     
 	        listener = new ClientListener(socket);
 	        listener.start();
