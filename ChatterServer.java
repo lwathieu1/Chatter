@@ -54,8 +54,9 @@ public class ChatterServer
 
 	}
 	
-	
-	private void tellOthers(String message) throws Exception 
+	private
+	synchronized
+	void tellOthers(String message) throws Exception 
 	{
 		System.out.println("trying to tell others!!");
 		Iterator <ServerListener> it = listOfListeners.iterator();
@@ -66,7 +67,9 @@ public class ChatterServer
 	 	}
 	}
 	
-	private boolean tellOne(String message, String name) throws Exception
+	private
+	synchronized
+	boolean tellOne(String message, String name) throws Exception
 	{
 		boolean found = false;
 		System.out.println("trying to tell "+name);
@@ -122,57 +125,57 @@ public class ChatterServer
 		@Override
 	    public void run()
 	    {
-			try {
-				while(!clientSocket.isClosed())
+		try {
+			while(!clientSocket.isClosed())
+			{
+				String inLine = readLine();
+				System.out.println("Got something from the user!");
+				if (!inLine.isEmpty())
 				{
-					String inLine = readLine();
-					System.out.println("Got something from the user!");
-					if (!inLine.isEmpty())
+					System.out.println("The Line from "+ nickName +" is = ");
+					System.out.println(inLine);
+					
+					//Process the incoming string
+					String[] arrOfWords = inLine.split(" ");
+					if (arrOfWords[0].equals("/nick") && arrOfWords.length > 1)
 					{
-						System.out.println("The Line from "+ nickName +" is = ");
-						System.out.println(inLine);
-						
-						//Process the incoming string
-						String[] arrOfWords = inLine.split(" ");
-						if (arrOfWords[0].equals("/nick") && arrOfWords.length > 1)
-						{
-							String oldNickName = nickName;
-							nickName = arrOfWords[1];
-							if (oldNickName.equals("defaultName"))
-								tellOthers(nickName+" joined the Chat Room!");
-							else
-								tellOthers(oldNickName + " changed their name to " + nickName);
-						}
-						else if (arrOfWords[0].equals("/dm") && arrOfWords.length > 1)
-						{
-							String ya = "DM from "+nickName+ ": "+ inLine.split(" ", 2)[1].split(" ", 2)[1];
-							if (!tellOne(ya, arrOfWords[1]))
-								tellOne("\""+ya+"\" was not found in the chat room!", nickName);
-						}
-						else if (arrOfWords[0].equals("/quit"))
-						{
-							tellOthers(nickName + " has left the chat room!");
-							clientSocket.close();
-							//break;
-						}
-						else 
-							tellOthers(nickName+": "+inLine);
+						String oldNickName = nickName;
+						nickName = arrOfWords[1];
+						if (oldNickName.equals("defaultName"))
+							tellOthers(nickName+" joined the Chat Room!");
+						else
+							tellOthers(oldNickName + " changed their name to " + nickName);
 					}
+					else if (arrOfWords[0].equals("/dm") && arrOfWords.length > 1)
+					{
+						String ya = "DM from "+nickName+ ": "+ inLine.split(" ", 2)[1].split(" ", 2)[1];
+						if (!tellOne(ya, arrOfWords[1]))
+							tellOne("\""+ya+"\" was not found in the chat room!", nickName);
+					}
+					else if (arrOfWords[0].equals("/quit"))
+					{
+						tellOthers(nickName + " has left the chat room!");
+						clientSocket.close();
+						//break;
+					}
+					else 
+						tellOthers(nickName+": "+inLine);
 				}
-
-				
-				Iterator <ServerListener> it = listOfListeners.iterator();
-			 	while( it.hasNext() )
-			 	{
-			 		ServerListener listener = it.next(); 
-			 		if (listener.equals(this))
-			 		{
-			 			it.remove();
-			 		}
-			 	}
 			}
-			catch (Exception e) 
-				{e.printStackTrace();}
+
+			
+			Iterator <ServerListener> it = listOfListeners.iterator();
+		 	while( it.hasNext() )
+		 	{
+		 		ServerListener listener = it.next(); 
+		 		if (listener.equals(this))
+		 		{
+		 			it.remove();
+		 		}
+		 	}
+		}
+		catch (Exception e) 
+			{e.printStackTrace();}
 	    }
 	}
 	
