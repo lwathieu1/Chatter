@@ -39,6 +39,7 @@ public class ChatterClient
 			System.out.println("Welcome! What is your nickname (no spaces)?");
 			String nickName = getUserInput();
 			write("/nick " + nickName);
+			System.out.println(nickName + " joined the Chat Room!");
 		     
 	        listener = new ClientListener(socket);
 	        listener.start();
@@ -100,7 +101,8 @@ public class ChatterClient
 				while(true)
 				{
 					String serverLine = readLine();
-					System.out.println(serverLine);
+					if (!serverLine.isEmpty())
+						System.out.println(serverLine);
 				}
 			}
 			catch (Exception e) 
