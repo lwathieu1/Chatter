@@ -5,12 +5,12 @@ import java.net.*;
 import java.util.Iterator;
 import java.util.LinkedList;
 
-
-
+//Server side of a Chat room. This file should be run once.
 public class ChatterServer
 {
-	ServerSocket sock;
-	LinkedList<ServerListener> listOfListeners = new LinkedList<ServerListener>();
+	private ServerSocket sock;
+	//stores a list of each serverListener (each connected to a client
+	private LinkedList<ServerListener> listOfListeners = new LinkedList<ServerListener>();
 	
 	public static void main( String[] args )
 	{
@@ -27,6 +27,7 @@ public class ChatterServer
 		new ChatterServer(portNum);
 	}
 	
+	//constructor for ChatterServer, opens the socket if available and answers the phone
 	public ChatterServer(int port)
 	{
 		try
@@ -37,16 +38,15 @@ public class ChatterServer
 	    catch( Exception e ) { System.err.println("DateServer: error = "+e); } 
 	}
 	
-	
+	//continuously waits on the chosen port for a client to call
 	private void answerThePhone() throws Exception 
 	{
 		while (true) // has no way to stop as written
         {
 			System.out.println("Listening on port "+sock.getLocalPort()+"...");
-			// when client calls, establish output stream to client and send date
-	    	// does not return until client calls up
 	        Socket client = sock.accept(); // this blocks code until a client calls      
-	        System.out.println("Chatter Server: accepts client connection! ");
+	        System.out.println("Chatter Server accepted a client connection!");
+	        //creates a ServerListener thread for each client, adds it to the list and starts the thread
 	        ServerListener sListenerThread = new ServerListener(client);
 	        listOfListeners.add(sListenerThread);
 	        sListenerThread.start();
@@ -54,6 +54,7 @@ public class ChatterServer
 
 	}
 	
+	//sends the message to all connected clients through ServerListener.write except the "sender" client
 	private
 	synchronized
 	void tellOthers(ServerListener sender, String message) throws Exception 
@@ -68,6 +69,8 @@ public class ChatterServer
 	 	}
 	}
 	
+	//sends the message to all connected clients wiht name "name" through ServerListener.write
+	//returns true if "name" was found, and false if "name" was not found.
 	private
 	synchronized
 	boolean tellOne(String message, String name) throws Exception
@@ -85,18 +88,17 @@ public class ChatterServer
 	 		}
 	 	}
 	 	return found;
-	 	
 	}
 	
-	
+	//Thread that listens to the ChatterClient on that socket and processes what it receives.
 	public class ServerListener extends Thread
 	{
 		public String nickName = "defaultName";
 		private Socket clientSocket;
-		BufferedReader bin;
-		BufferedWriter bout;
-		//PrintWriter pout;
+		private BufferedReader bin;
+		private BufferedWriter bout;
 		
+		//constructor, stores the BufferedReader and BufferedWriter required for the socket
 		public ServerListener(Socket s) throws Exception
 		{
 			clientSocket = s;
@@ -106,79 +108,112 @@ public class ChatterServer
 			
 			OutputStream out = clientSocket.getOutputStream();
 		    bout = new BufferedWriter( new OutputStreamWriter( out ) );
-			
 		}
 		
 		
+		//writes "s" to the client
 		public void write(String s) throws IOException 
 		{
 			bout.write(s+"\n");
 	        bout.flush();
 		}
 		
+		//reads from the client, blocks until client writes "\n" to the pipe
 		public String readLine() throws IOException
 		{
-            // Thread.sleep(1000);
             String msg = bin.readLine();
             return msg;
 		}
 		
+		
+		//takes "line" from client and processes it, seeing if any keywords were written. 
+		//closes socket if "/quit" is written
+		private void processClientLine(String line) throws Exception
+		{
+			//split string along spaces, to process easier
+			String[] arrOfWords = line.split(" ");
+			
+			//user wants to change their name
+			if (arrOfWords[0].equals("/nick") && arrOfWords.length > 1)
+			{
+				//if old name is "defaultName", nickName just joined. otherwise, it is a name change
+				String oldNickName = nickName;
+				nickName = arrOfWords[1];
+				if (oldNickName.equals("defaultName"))
+					tellOthers(this, nickName+" joined the Chat Room!");
+				else
+					tellOthers(this, oldNickName + " changed their name to " + nickName);
+			}
+			
+			//user wants to write to a specific user
+			else if (arrOfWords[0].equals("/dm") && arrOfWords.length > 1)
+			{
+				//strippedMessage takes out first 2 words ("/dm name .....")
+				String strippedMessage = line.split(" ", 2)[1].split(" ", 2)[1];
+				String cleanedMessage = "DM from "+nickName+ ": "+ strippedMessage;
+				String recipient = arrOfWords[1];
+				
+				//returns false if "recipient" is not the name of a chat room user, reports to sender
+				boolean messageSent = tellOne(cleanedMessage, recipient);
+				if (!messageSent)
+					tellOne("\""+recipient+"\" was not found in the chat room!", nickName);
+			}
+			
+			//user wants to list all users in the chat room
+			else if (arrOfWords[0].equals("/users"))
+			{
+				String listOfNames = "Current Users: ";
+				Iterator <ServerListener> it = listOfListeners.iterator();
+			 	while( it.hasNext() )
+			 	{
+			 		ServerListener listener = it.next(); 
+			 		listOfNames += listener.nickName +", ";
+			 	}
+			 	listOfNames = listOfNames.substring(0, listOfNames.length() - 2);
+			 	tellOne(listOfNames, nickName);
+			}
+			
+			//user wants to quit
+			else if (arrOfWords[0].equals("/quit"))
+			{
+				tellOthers(this, nickName + " has left the chat room!");
+				clientSocket.close();
+			}
+			else 
+				tellOthers(this, nickName+": "+line);
+		}
+		
+		
+		//executes when ".start()" is used
 		@Override
 	    public void run()
 	    {
 		try {
+			//exits when the socket is closed (the user said /quit)
 			while(!clientSocket.isClosed())
 			{
 				String inLine = readLine();
-				System.out.println("Got something from the user!");
 				if (!inLine.isEmpty())
 				{
-					System.out.println("The Line from "+ nickName +" is = ");
+					System.out.println("The Line from "+ nickName +" is: ");
 					System.out.println(inLine);
 					
-					//Process the incoming string
-					String[] arrOfWords = inLine.split(" ");
-					if (arrOfWords[0].equals("/nick") && arrOfWords.length > 1)
-					{
-						String oldNickName = nickName;
-						nickName = arrOfWords[1];
-						if (oldNickName.equals("defaultName"))
-							tellOthers(this, nickName+" joined the Chat Room!");
-						else
-							tellOthers(this, oldNickName + " changed their name to " + nickName);
-					}
-					else if (arrOfWords[0].equals("/dm") && arrOfWords.length > 1)
-					{
-						String ya = "DM from "+nickName+ ": "+ inLine.split(" ", 2)[1].split(" ", 2)[1];
-						if (!tellOne(ya, arrOfWords[1]))
-							tellOne("\""+ya+"\" was not found in the chat room!", nickName);
-					}
-					else if (arrOfWords[0].equals("/quit"))
-					{
-						tellOthers(this, nickName + " has left the chat room!");
-						clientSocket.close();
-						//break;
-					}
-					else 
-						tellOthers(this, nickName+": "+inLine);
+					//closes socket (leaves while loop) if /quit is typed
+					processClientLine(inLine);
 				}
 			}
 
-			
+			//runs when the user quits, finds the appropriate listener in the list and deletes it
 			Iterator <ServerListener> it = listOfListeners.iterator();
 		 	while( it.hasNext() )
 		 	{
 		 		ServerListener listener = it.next(); 
 		 		if (listener.equals(this))
-		 		{
 		 			it.remove();
-		 		}
 		 	}
 		}
 		catch (Exception e) 
 			{e.printStackTrace();}
 	    }
 	}
-	
-	
 }
